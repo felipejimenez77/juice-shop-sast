@@ -16,7 +16,7 @@ jobs: # Contenedor principal de los trabajos que ejecutará el pipeline
         uses: actions/checkout@v4 # Acción oficial de GitHub para extraer el código fuente del repositorio
       - name: Install Bearer CLI # Etiqueta descriptiva para la instalación oficial de Bearer CLI
         run: | # Ejecuta el script oficial de instalación de Bearer en el runner de Linux
-          curl -sfL https://raw.://githubusercontent.com | sh # Descarga e instala el binario oficial de Bearer
+          curl -sfL https://raw.githubusercontent.com/Bearer/bearer/main/contrib/install.sh | sh # Descarga e instala el binario oficial de Bearer
           sudo mv ./bin/bearer /usr/local/bin/ # Mueve el ejecutable a la ruta global del sistema
       - name: Run Bearer SAST and generate SARIF # Etiqueta para el análisis estático en formato SARIF
         continue-on-error: true # Permite que el pipeline siga aunque Bearer detecte fallos de seguridad
