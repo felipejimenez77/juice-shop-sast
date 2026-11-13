@@ -1,0 +1,39 @@
+name: SAST Bearer Pipeline # Nombre identificador del flujo de trabajo en GitHub Actions
+on: # Bloque que define los eventos desencadenantes del pipeline
+  push: # Dispara la ejecución automática ante eventos de subida de código
+    branches: [ main ] # Restringe el evento push exclusivamente a la rama principal main
+  pull_request: # Dispara la ejecución al crear o actualizar solicitudes de extracción
+    branches: [ main ] # Restringe el pull_request para que apunte hacia la rama main
+  workflow_dispatch: # Permite activar la ejecución manual del pipeline desde la interfaz web
+permissions: # Define los permisos de seguridad otorgados al token del sistema GITHUB_TOKEN
+  contents: read # Concede permiso de solo lectura sobre el código fuente del repositorio
+  security-events: write # Concede permiso de escritura para reportar vulnerabilidades en Code Scanning
+jobs: # Contenedor principal de los trabajos que ejecutará el pipeline
+  sast_scan: # Identificador lógico del único job definido en este flujo
+    runs-on: ubuntu-latest # Especifica que el entorno virtual ejecutor será la última versión de Ubuntu
+    steps: # Secuencia ordenada de tareas o pasos que compondrán el job
+      - name: Checkout repository # Etiqueta descriptiva para el paso de clonación
+        uses: actions/checkout@v4 # Acción oficial de GitHub para extraer el código fuente del repositorio
+      - name: Set up Node.js # Etiqueta descriptiva para la instalación del entorno de Node
+        uses: actions/setup-node@v4 # Acción oficial de GitHub para configurar la versión de Node.js
+        with: # Bloque de parámetros de entrada para la acción de Node.js
+          node-version: 20 # Define la versión 20.x de Node.js a desplegar en el runner
+      - name: Run Bearer SAST and generate SARIF # Etiqueta para el análisis estático en formato SARIF
+        continue-on-error: true # Permite que el pipeline siga aunque Bearer detecte fallos de seguridad
+        run: | # Indicador para ejecutar múltiples comandos consecutivos en la terminal del runner
+          mkdir -p reports # Crea el directorio local reports si este aún no existe
+          npx @bearer/cli scan . --format sarif --output reports/bearer-report.sarif --exit-code 0 # Ejecuta Bearer sobre todo el repo exportando en formato SARIF
+      - name: Run Bearer SAST and generate HTML # Etiqueta para el análisis estático en formato HTML visual
+        continue-on-error: true # Evita que un fallo detenga el flujo antes de empaquetar artefactos
+        run: | # Indicador para ejecutar comandos de consola adicionales
+          npx @bearer/cli scan . --format html --output reports/bearer-report.html # Ejecuta Bearer sobre todo el repositorio generando el reporte visual HTML
+      - name: Upload SARIF report to GitHub Security # Etiqueta para la subida de resultados a Code Scanning
+        uses: github/codeql-action/upload-sarif@v3 # Acción oficial para cargar el archivo SARIF al panel de seguridad
+        with: # Bloque de configuración para la subida del reporte SARIF
+          sarif_file: reports/bearer-report.sarif # Ruta exacta donde se localiza el reporte SARIF generado
+      - name: Upload HTML report as artifact # Etiqueta para respaldar el reporte HTML como archivo descargable
+        if: always() # Condición estricta que asegura la ejecución del paso incluso si pasos previos fallan
+        uses: actions/upload-artifact@v4 # Acción oficial de GitHub para almacenar artefactos de compilación
+        with: # Bloque de parámetros para la subida del artefacto HTML
+          name: bearer-html-report # Nombre identificador del artefacto comprimido en la interfaz
+          path: reports/bearer-report.html # Ruta local del archivo HTML que será empaquetado y subido
